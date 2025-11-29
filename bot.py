@@ -9,16 +9,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 TOKEN = os.environ["BOT_TOKEN"]
-MODEL_NAME = os.environ["MODEL_NAME"]
+# مسار النموذج المحلي داخل المستودع
+MODEL_NAME = os.environ.get("MODEL_NAME", "./phi2-4bit")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
-model = AutoGPTQForCausalLM.from_pretrained(
-    MODEL_NAME,
-    device_map="auto",
-    trust_remote_code=True
-)
+model = AutoGPTQForCausalLM.from_pretrained(MODEL_NAME, device_map="auto", trust_remote_code=True)
 
 def infer(text):
     inputs = tokenizer(text, return_tensors="pt").to(device)
