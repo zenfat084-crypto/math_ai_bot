@@ -1,0 +1,58 @@
+{
+    "_name_or_path": "/workspace/process/microsoft_phi-2/source",
+    "activation_function": "gelu_new",
+    "architectures": [
+        "PhiForCausalLM"
+    ],
+    "attn_pdrop": 0.0,
+    "auto_map": {
+        "AutoConfig": "configuration_phi.PhiConfig",
+        "AutoModelForCausalLM": "modeling_phi.PhiForCausalLM"
+    },
+    "embd_pdrop": 0.0,
+    "flash_attn": false,
+    "flash_rotary": false,
+    "fused_dense": false,
+    "img_processor": null,
+    "initializer_range": 0.02,
+    "layer_norm_epsilon": 1e-05,
+    "model_type": "phi-msft",
+    "n_embd": 2560,
+    "n_head": 32,
+    "n_head_kv": null,
+    "n_inner": null,
+    "n_layer": 32,
+    "n_positions": 2048,
+    "pad_token_id": 0,
+    "pretraining_tp": 1,
+    "quantization_config": {
+        "batch_size": 1,
+        "bits": 4,
+        "block_name_to_quantize": null,
+        "cache_block_outputs": true,
+        "damp_percent": 0.1,
+        "desc_act": true,
+        "exllama_config": {
+            "version": 1
+        },
+        "group_size": 128,
+        "max_input_length": null,
+        "model_seqlen": null,
+        "module_name_preceding_first_block": null,
+        "modules_in_block_to_quantize": null,
+        "pad_token_id": null,
+        "quant_method": "gptq",
+        "sym": true,
+        "tokenizer": null,
+        "true_sequential": true,
+        "use_cuda_fp16": false,
+        "use_exllama": true
+    },
+    "resid_pdrop": 0.1,
+    "rotary_dim": 32,
+    "tie_word_embeddings": false,
+    "torch_dtype": "float16",
+    "transformers_version": "4.37.0.dev0",
+    "use_cache": true,
+    "vocab_size": 51200
+}
