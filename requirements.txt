@@ -1,0 +1,5 @@
+transformers
+accelerate
+auto-gptq
+torch
+python-telegram-bot==13.15
