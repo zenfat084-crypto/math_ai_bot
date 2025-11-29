@@ -8,12 +8,15 @@ import torch
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# يجب أن يكون هذا هو اسم متغير البيئة في Railway
 TOKEN = os.environ["BOT_TOKEN"]
-# مسار النموذج المحلي داخل المستودع
+
+# مسار النموذج داخل المستودع
 MODEL_NAME = os.environ.get("MODEL_NAME", "./phi2-4bit")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+# تحميل النموذج
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
 model = AutoGPTQForCausalLM.from_pretrained(MODEL_NAME, device_map="auto", trust_remote_code=True)
 
