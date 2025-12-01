@@ -1,47 +1,87 @@
 import os
-import logging
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-from transformers import AutoTokenizer
-from auto_gptq import AutoGPTQForCausalLM
-import torch
+import json
+import requests
+from flask import Flask, request
+from telegram import Bot, Update
+from telegram.ext import Dispatcher, CommandHandler, MessageHandler, filters
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# متغيرات البيئة من Render
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+COLAB_API_URL = os.environ.get("COLAB_API_URL")  # رابط ngrok من Colab
 
-# يجب أن يكون هذا هو اسم متغير البيئة في Railway
-TOKEN = os.environ["BOT_TOKEN"]
+if not BOT_TOKEN:
+    raise RuntimeError("❌ BOT_TOKEN غير موجود في Environment Variables")
 
-# مسار النموذج داخل المستودع
-MODEL_NAME = os.environ.get("MODEL_NAME", "./phi2-4bit")
+app = Flask(__name__)
+bot = Bot(BOT_TOKEN)
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+# dispatcher لمعالجة الرسائل
+dispatcher = Dispatcher(bot, None, workers=0, use_context=True)
 
-# تحميل النموذج
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
-model = AutoGPTQForCausalLM.from_pretrained(MODEL_NAME, device_map="auto", trust_remote_code=True)
-
-def infer(text):
-    inputs = tokenizer(text, return_tensors="pt").to(device)
-    outputs = model.generate(**inputs, max_new_tokens=350)
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
-
+# أمر /start
 def start(update, context):
-    update.message.reply_text("مرحبًا! أنا بوت ذكاء اصطناعي متخصص بالرياضيات. اسأل أي سؤال!")
+    update.message.reply_text("🚀 البوت يعمل! أرسل أي رسالة لتوليد رد بالذكاء الاصطناعي.")
 
-def reply(update, context):
-    q = update.message.text
-    update.message.chat.send_action("typing")
-    prompt = f"حل المسألة التالية بالتفصيل:\n{q}\n\nالشرح خطوة بخطوة:"
-    answer = infer(prompt)
-    update.message.reply_text(answer)
+# عند استقبال رسالة عادية
+def handle_message(update, context):
+    chat_id = update.effective_chat.id
+    user_text = update.message.text
 
-def main():
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(Filters.text, reply))
-    updater.start_polling()
-    updater.idle()
+    # عرض "typing..." للمستخدم
+    bot.send_chat_action(chat_id=chat_id, action="typing")
 
+    if not COLAB_API_URL:
+        bot.send_message(chat_id, "⚠️ خادم الذكاء الاصطناعي غير متصل حاليًا.")
+        return
+
+    # طلب للذكاء الاصطناعي في Colab
+    try:
+        response = requests.post(
+            f"{COLAB_API_URL.rstrip('/')}/generate",
+            json={"prompt": user_text},
+            timeout=60
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            ai_reply = data.get("response", "لم يصل رد من النموذج.")
+            bot.send_message(chat_id, ai_reply)
+        else:
+            bot.send_message(chat_id, f"⚠️ خطأ في خادم AI (رمز {response.status_code})")
+
+    except requests.exceptions.RequestException:
+        bot.send_message(chat_id, "❌ لم أستطع التواصل مع خادم الذكاء الاصطناعي.")
+        
+
+# ربط الأوامر
+dispatcher.add_handler(CommandHandler("start", start))
+dispatcher.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+# Webhook endpoint
+@app.route(f"/{BOT_TOKEN}", methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), bot)
+    dispatcher.process_update(update)
+    return "ok"
+
+# Health check
+@app.route("/healthz")
+def health():
+    return "ok"
+
+# تشغيل السيرفر على Render
 if __name__ == "__main__":
-    main()
+    port = int(os.environ.get("PORT", 5000))
+    render_url = os.environ.get("RENDER_EXTERNAL_URL")  # Render قد يضبطها تلقائيًا
+
+    if render_url:
+        webhook_url = f"{render_url.rstrip('/')}/{BOT_TOKEN}"
+        try:
+            bot.set_webhook(webhook_url)
+            print("Webhook set to:", webhook_url)
+        except Exception as e:
+            print("Webhook setup failed:", e)
+    else:
+        print("⚠️ تعذّر العثور على RENDER_EXTERNAL_URL — اضبط Webhook يدويًا لاحقًا.")
+
+    app.run(host="0.0.0.0", port=port)
