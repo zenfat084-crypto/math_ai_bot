@@ -1,5 +1,7 @@
-transformers
-accelerate
-auto-gptq
+flask
+requests
+python-telegram-bot>=20.3
+transformers>=4.37.0
 torch
-python-telegram-bot==13.15
+accelerate
+ر
